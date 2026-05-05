@@ -1,72 +1,130 @@
-import React from 'react';
-import { Card, Container, Row, Col, Form, Button } from 'react-bootstrap';
+import React, { useMemo, useState } from 'react';
+import { Badge, Button, Card, Col, Container, Form, Row } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 
 type Position = {
-    title: string;
-    manager: string;
-    deadline: string;
-    status: 'Abierto' | 'Contratado' | 'Cerrado' | 'Borrador';
+  id: number;
+  title: string;
+  manager: string;
+  deadline: string;
+  status: 'Open' | 'Filled' | 'Closed' | 'Draft';
 };
 
-const mockPositions: Position[] = [
-    { title: 'Senior Backend Engineer', manager: 'John Doe', deadline: '2024-12-31', status: 'Abierto' },
-    { title: 'Junior Android Engineer', manager: 'Jane Smith', deadline: '2024-11-15', status: 'Contratado' },
-    { title: 'Product Manager', manager: 'Alex Jones', deadline: '2024-07-31', status: 'Borrador' }
+const positions: Position[] = [
+  { id: 1, title: 'Senior Full-Stack Engineer', manager: 'Alice Johnson', deadline: '2024-12-31', status: 'Open' },
+  { id: 2, title: 'Data Scientist', manager: 'Bob Miller', deadline: '2024-12-31', status: 'Open' },
+  { id: 3, title: 'Product Manager', manager: 'Alex Jones', deadline: '2024-07-31', status: 'Draft' },
 ];
 
+const statusLabels: Record<Position['status'], string> = {
+  Open: 'Abierto',
+  Filled: 'Contratado',
+  Closed: 'Cerrado',
+  Draft: 'Borrador',
+};
+
+const statusVariants: Record<Position['status'], string> = {
+  Open: 'warning',
+  Filled: 'success',
+  Closed: 'dark',
+  Draft: 'secondary',
+};
+
 const Positions: React.FC = () => {
-    return (
-        <Container className="mt-5">
-            <h2 className="text-center mb-4">Posiciones</h2>
-            <Row className="mb-4">
-                <Col md={3}>
-                    <Form.Control type="text" placeholder="Buscar por título" />
-                </Col>
-                <Col md={3}>
-                    <Form.Control type="date" placeholder="Buscar por fecha" />
-                </Col>
-                <Col md={3}>
-                    <Form.Control as="select">
-                        <option value="">Estado</option>
-                        <option value="open">Abierto</option>
-                        <option value="filled">Contratado</option>
-                        <option value="closed">Cerrado</option>
-                        <option value="draft">Borrador</option>
-                    </Form.Control>
-                </Col>
-                <Col md={3}>
-                    <Form.Control as="select">
-                        <option value="">Manager</option>
-                        <option value="john_doe">John Doe</option>
-                        <option value="jane_smith">Jane Smith</option>
-                        <option value="alex_jones">Alex Jones</option>
-                    </Form.Control>
-                </Col>
-            </Row>
-            <Row>
-                {mockPositions.map((position, index) => (
-                    <Col md={4} key={index} className="mb-4">
-                        <Card className="shadow-sm">
-                            <Card.Body>
-                                <Card.Title>{position.title}</Card.Title>
-                                <Card.Text>
-                                    <strong>Manager:</strong> {position.manager}<br />
-                                    <strong>Deadline:</strong> {position.deadline}
-                                </Card.Text>
-                                <span className={`badge ${position.status === 'Abierto' ? 'bg-warning' : position.status === 'Contratado' ? 'bg-success' : position.status === 'Borrador' ? 'bg-secondary' : 'bg-warning'} text-white`}>
-                                    {position.status}
-                                </span>
-                                <div className="d-flex justify-content-between mt-3">
-                                    <Button variant="primary">Ver proceso</Button>
-                                    <Button variant="secondary">Editar</Button>
-                                </div>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
-        </Container>
-    );
+  const [searchText, setSearchText] = useState('');
+  const [deadlineFilter, setDeadlineFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [managerFilter, setManagerFilter] = useState('');
+
+  const managers = useMemo(() => Array.from(new Set(positions.map((position) => position.manager))), []);
+
+  const filteredPositions = useMemo(() => {
+    return positions.filter((position) => {
+      const matchesText = position.title.toLowerCase().includes(searchText.toLowerCase());
+      const matchesDeadline = !deadlineFilter || position.deadline === deadlineFilter;
+      const matchesStatus = !statusFilter || position.status === statusFilter;
+      const matchesManager = !managerFilter || position.manager === managerFilter;
+
+      return matchesText && matchesDeadline && matchesStatus && matchesManager;
+    });
+  }, [deadlineFilter, managerFilter, searchText, statusFilter]);
+
+  return (
+    <Container className="py-5">
+      <div className="mb-4">
+        <Link to="/" className="small text-decoration-none">
+          Volver al dashboard
+        </Link>
+        <h1 className="h2 mb-1">Posiciones</h1>
+        <p className="text-muted mb-0">Selecciona una posicion para gestionar su proceso de contratacion.</p>
+      </div>
+
+      <Row className="g-3 mb-4">
+        <Col md={3}>
+          <Form.Control
+            type="search"
+            placeholder="Buscar por titulo"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+          />
+        </Col>
+        <Col md={3}>
+          <Form.Control
+            type="date"
+            value={deadlineFilter}
+            onChange={(event) => setDeadlineFilter(event.target.value)}
+          />
+        </Col>
+        <Col md={3}>
+          <Form.Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">Estado</option>
+            {Object.entries(statusLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Form.Select>
+        </Col>
+        <Col md={3}>
+          <Form.Select value={managerFilter} onChange={(event) => setManagerFilter(event.target.value)}>
+            <option value="">Manager</option>
+            {managers.map((manager) => (
+              <option key={manager} value={manager}>
+                {manager}
+              </option>
+            ))}
+          </Form.Select>
+        </Col>
+      </Row>
+
+      <Row className="g-4">
+        {filteredPositions.map((position) => (
+          <Col md={6} lg={4} key={position.id}>
+            <Card className="h-100 shadow-sm">
+              <Card.Body className="d-flex flex-column">
+                <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <Card.Title className="h5 mb-0">{position.title}</Card.Title>
+                  <Badge bg={statusVariants[position.status]} text={position.status === 'Open' ? 'dark' : 'white'}>
+                    {statusLabels[position.status]}
+                  </Badge>
+                </div>
+                <Card.Text className="text-muted">
+                  Manager: {position.manager}
+                  <br />
+                  Deadline: {position.deadline}
+                </Card.Text>
+                <Link to={`/position/${position.id}`} className="mt-auto">
+                  <Button variant="primary" className="w-100">
+                    Ver proceso
+                  </Button>
+                </Link>
+              </Card.Body>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+    </Container>
+  );
 };
 
 export default Positions;
