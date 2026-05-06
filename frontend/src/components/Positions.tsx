@@ -1,29 +1,25 @@
-import React, { useMemo, useState } from 'react';
-import { Badge, Button, Card, Col, Container, Form, Row } from 'react-bootstrap';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3010';
 
 type Position = {
   id: number;
   title: string;
   manager: string;
   deadline: string;
-  status: 'Open' | 'Filled' | 'Closed' | 'Draft';
+  status: string;
 };
 
-const positions: Position[] = [
-  { id: 1, title: 'Senior Full-Stack Engineer', manager: 'Alice Johnson', deadline: '2024-12-31', status: 'Open' },
-  { id: 2, title: 'Data Scientist', manager: 'Bob Miller', deadline: '2024-12-31', status: 'Open' },
-  { id: 3, title: 'Product Manager', manager: 'Alex Jones', deadline: '2024-07-31', status: 'Draft' },
-];
-
-const statusLabels: Record<Position['status'], string> = {
+const statusLabels: Record<string, string> = {
   Open: 'Abierto',
   Filled: 'Contratado',
   Closed: 'Cerrado',
   Draft: 'Borrador',
 };
 
-const statusVariants: Record<Position['status'], string> = {
+const statusVariants: Record<string, string> = {
   Open: 'warning',
   Filled: 'success',
   Closed: 'dark',
@@ -31,12 +27,39 @@ const statusVariants: Record<Position['status'], string> = {
 };
 
 const Positions: React.FC = () => {
+  const [positions, setPositions] = useState<Position[]>([]);
   const [searchText, setSearchText] = useState('');
   const [deadlineFilter, setDeadlineFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [managerFilter, setManagerFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const managers = useMemo(() => Array.from(new Set(positions.map((position) => position.manager))), []);
+  useEffect(() => {
+    const loadPositions = async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/positions`);
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status} al consultar posiciones`);
+        }
+
+        setPositions(await response.json());
+      } catch (caughtError) {
+        setPositions([]);
+        setError(caughtError instanceof Error ? caughtError.message : 'Error inesperado al cargar posiciones');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPositions();
+  }, []);
+
+  const managers = useMemo(() => Array.from(new Set(positions.map((position) => position.manager).filter(Boolean))), [positions]);
 
   const filteredPositions = useMemo(() => {
     return positions.filter((position) => {
@@ -47,7 +70,7 @@ const Positions: React.FC = () => {
 
       return matchesText && matchesDeadline && matchesStatus && matchesManager;
     });
-  }, [deadlineFilter, managerFilter, searchText, statusFilter]);
+  }, [deadlineFilter, managerFilter, positions, searchText, statusFilter]);
 
   return (
     <Container className="py-5">
@@ -97,15 +120,32 @@ const Positions: React.FC = () => {
         </Col>
       </Row>
 
+      {error && <Alert variant="danger">{error}</Alert>}
+
+      {loading && (
+        <div className="position-detail__loading">
+          <Spinner animation="border" role="status" />
+          <span>Cargando posiciones...</span>
+        </div>
+      )}
+
       <Row className="g-4">
-        {filteredPositions.map((position) => (
+        {!loading && filteredPositions.length === 0 && !error && (
+          <Col>
+            <Alert variant="light" className="border">
+              No hay posiciones que coincidan con los filtros.
+            </Alert>
+          </Col>
+        )}
+
+        {!loading && filteredPositions.map((position) => (
           <Col md={6} lg={4} key={position.id}>
             <Card className="h-100 shadow-sm">
               <Card.Body className="d-flex flex-column">
                 <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
                   <Card.Title className="h5 mb-0">{position.title}</Card.Title>
-                  <Badge bg={statusVariants[position.status]} text={position.status === 'Open' ? 'dark' : 'white'}>
-                    {statusLabels[position.status]}
+                  <Badge bg={statusVariants[position.status] || 'secondary'} text={position.status === 'Open' ? 'dark' : 'white'}>
+                    {statusLabels[position.status] || position.status}
                   </Badge>
                 </div>
                 <Card.Text className="text-muted">

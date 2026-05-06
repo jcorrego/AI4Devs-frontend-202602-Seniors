@@ -1,5 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import { Position } from '../../domain/models/Position';
 
 const prisma = new PrismaClient();
 
@@ -31,6 +30,26 @@ export const getCandidatesByPositionService = async (positionId: number) => {
         console.error('Error retrieving candidates by position:', error);
         throw new Error('Error retrieving candidates by position');
     }
+};
+
+export const getPositionsService = async () => {
+    const positions = await prisma.position.findMany({
+        orderBy: [
+            { applicationDeadline: 'asc' },
+            { id: 'asc' }
+        ],
+        include: {
+            company: true
+        }
+    });
+
+    return positions.map(position => ({
+        id: position.id,
+        title: position.title,
+        manager: position.contactInfo || position.company.name,
+        deadline: position.applicationDeadline?.toISOString().slice(0, 10) || '',
+        status: position.status
+    }));
 };
 
 export const getInterviewFlowByPositionService = async (positionId: number) => {

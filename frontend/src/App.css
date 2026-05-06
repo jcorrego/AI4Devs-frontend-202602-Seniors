@@ -71,7 +71,7 @@
 .position-detail__header h1 {
   color: #172033;
   font-size: 2rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.2;
   margin: 0.25rem 0 0;
 }
@@ -133,7 +133,7 @@
   color: #667085;
   display: block;
   font-size: 0.8rem;
-  font-weight: 650;
+  font-weight: 700;
   margin-bottom: 0.35rem;
 }
 
@@ -193,7 +193,7 @@
   color: #7a8496;
   display: block;
   font-size: 0.74rem;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: 0.05em;
   margin-bottom: 0.25rem;
   text-transform: uppercase;
@@ -202,7 +202,7 @@
 .kanban-column__header h2 {
   color: #172033;
   font-size: 1.02rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.25;
   margin: 0;
 }
@@ -283,7 +283,7 @@
 .candidate-card .card-title {
   color: #172033;
   font-size: 1rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.25;
   margin: 0;
 }
@@ -308,7 +308,7 @@
 .candidate-card__score span {
   color: #667085;
   font-size: 0.82rem;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .candidate-card__score strong {

@@ -15,7 +15,7 @@ type Candidate = {
   applicationId: number;
   fullName: string;
   currentInterviewStep: string;
-  averageScore: number;
+  averageScore: number | null;
 };
 
 type InterviewFlowPayload = {
@@ -61,6 +61,10 @@ const getInitials = (fullName: string) =>
     .slice(0, 2)
     .toUpperCase();
 
+const formatScore = (score: number | null | undefined) => {
+  return typeof score === 'number' && Number.isFinite(score) ? score.toFixed(1) : '-';
+};
+
 const PositionDetail: React.FC = () => {
   const { positionId } = useParams();
   const [positionName, setPositionName] = useState('Posicion');
@@ -87,8 +91,16 @@ const PositionDetail: React.FC = () => {
       return '0.0';
     }
 
-    const totalScore = candidates.reduce((total, candidate) => total + candidate.averageScore, 0);
-    return (totalScore / candidates.length).toFixed(1);
+    const scores = candidates
+      .map((candidate) => candidate.averageScore)
+      .filter((score): score is number => typeof score === 'number' && Number.isFinite(score));
+
+    if (scores.length === 0) {
+      return '-';
+    }
+
+    const totalScore = scores.reduce((total, score) => total + score, 0);
+    return (totalScore / scores.length).toFixed(1);
   }, [candidates]);
 
   const loadPosition = useCallback(async () => {
@@ -104,12 +116,12 @@ const PositionDetail: React.FC = () => {
     try {
       const [flowPayload, candidatesPayload] = await Promise.all([
         readJson<InterviewFlowResponse>([
-          `${API_BASE_URL}/positions/${numericPositionId}/interviewFlow`,
           `${API_BASE_URL}/position/${numericPositionId}/interviewflow`,
+          `${API_BASE_URL}/positions/${numericPositionId}/interviewFlow`,
         ]),
         readJson<Candidate[]>([
-          `${API_BASE_URL}/positions/${numericPositionId}/candidates`,
           `${API_BASE_URL}/position/${numericPositionId}/candidates`,
+          `${API_BASE_URL}/positions/${numericPositionId}/candidates`,
         ]),
       ]);
 
@@ -145,6 +157,14 @@ const PositionDetail: React.FC = () => {
     setDropTargetStepId(stepId);
   };
 
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    const nextTarget = event.relatedTarget as Node | null;
+
+    if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
+      setDropTargetStepId(null);
+    }
+  };
+
   const handleDrop = async (event: DragEvent<HTMLDivElement>, step: InterviewStep) => {
     event.preventDefault();
     setDropTargetStepId(null);
@@ -164,7 +184,7 @@ const PositionDetail: React.FC = () => {
     );
 
     try {
-      const response = await fetch(`${API_BASE_URL}/candidates/${draggedCandidate.id}/stage`, {
+      const response = await fetch(`${API_BASE_URL}/candidates/${draggedCandidate.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -176,7 +196,7 @@ const PositionDetail: React.FC = () => {
       });
 
       if (!response.ok) {
-        const fallbackResponse = await fetch(`${API_BASE_URL}/candidates/${draggedCandidate.id}`, {
+        const fallbackResponse = await fetch(`${API_BASE_URL}/candidates/${draggedCandidate.id}/stage`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -194,7 +214,6 @@ const PositionDetail: React.FC = () => {
       }
 
       setSuccessMessage(`${draggedCandidate.fullName} movido a ${step.name}`);
-      await loadPosition();
     } catch (caughtError) {
       setCandidates(previousCandidates);
       setError(caughtError instanceof Error ? caughtError.message : 'Error inesperado al actualizar la fase');
@@ -254,7 +273,7 @@ const PositionDetail: React.FC = () => {
                   <div
                     className={`kanban-column ${isDropTarget ? 'kanban-column--active' : ''}`}
                     onDragOver={(event) => handleDragOver(event, step.id)}
-                    onDragLeave={() => setDropTargetStepId(null)}
+                    onDragLeave={handleDragLeave}
                     onDrop={(event) => handleDrop(event, step)}
                   >
                     <div className="kanban-column__header">
@@ -290,7 +309,7 @@ const PositionDetail: React.FC = () => {
                             </div>
                             <div className="candidate-card__score">
                               <span>Puntuacion media</span>
-                              <strong>{candidate.averageScore.toFixed(1)}</strong>
+                              <strong>{formatScore(candidate.averageScore)}</strong>
                             </div>
                           </Card.Body>
                         </Card>
