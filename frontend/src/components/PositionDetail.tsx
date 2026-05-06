@@ -1,5 +1,5 @@
 import React, { DragEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Badge, Card, Col, Container, Row, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import { Link, useParams } from 'react-router-dom';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3010';
@@ -105,6 +105,10 @@ const PositionDetail: React.FC = () => {
 
   const loadPosition = useCallback(async () => {
     if (!numericPositionId || Number.isNaN(numericPositionId)) {
+      setPositionName('Posicion');
+      setInterviewSteps([]);
+      setCandidates([]);
+      setSuccessMessage('');
       setError('El identificador de la posicion no es valido');
       setLoading(false);
       return;
@@ -165,44 +169,41 @@ const PositionDetail: React.FC = () => {
     }
   };
 
-  const handleDrop = async (event: DragEvent<HTMLDivElement>, step: InterviewStep) => {
-    event.preventDefault();
-    setDropTargetStepId(null);
-
-    if (!draggedCandidate || draggedCandidate.currentInterviewStep === step.name) {
-      setDraggedCandidate(null);
+  const moveCandidateToStep = async (candidateToMove: Candidate, step: InterviewStep) => {
+    if (candidateToMove.currentInterviewStep === step.name) {
       return;
     }
 
     const previousCandidates = candidates;
-    const movedCandidate = { ...draggedCandidate, currentInterviewStep: step.name };
+    const movedCandidate = { ...candidateToMove, currentInterviewStep: step.name };
 
     setSaving(true);
     setError('');
+    setSuccessMessage('');
     setCandidates((currentCandidates) =>
       currentCandidates.map((candidate) => (candidate.applicationId === movedCandidate.applicationId ? movedCandidate : candidate))
     );
 
     try {
-      const response = await fetch(`${API_BASE_URL}/candidates/${draggedCandidate.id}`, {
+      const response = await fetch(`${API_BASE_URL}/candidates/${candidateToMove.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          applicationId: draggedCandidate.applicationId,
+          applicationId: candidateToMove.applicationId,
           currentInterviewStep: step.id,
         }),
       });
 
       if (!response.ok) {
-        const fallbackResponse = await fetch(`${API_BASE_URL}/candidates/${draggedCandidate.id}/stage`, {
+        const fallbackResponse = await fetch(`${API_BASE_URL}/candidates/${candidateToMove.id}/stage`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            applicationId: draggedCandidate.applicationId,
+            applicationId: candidateToMove.applicationId,
             currentInterviewStep: step.id,
           }),
         });
@@ -213,13 +214,28 @@ const PositionDetail: React.FC = () => {
         }
       }
 
-      setSuccessMessage(`${draggedCandidate.fullName} movido a ${step.name}`);
+      setSuccessMessage(`${candidateToMove.fullName} movido a ${step.name}`);
     } catch (caughtError) {
       setCandidates(previousCandidates);
       setError(caughtError instanceof Error ? caughtError.message : 'Error inesperado al actualizar la fase');
     } finally {
-      setDraggedCandidate(null);
       setSaving(false);
+    }
+  };
+
+  const handleDrop = async (event: DragEvent<HTMLDivElement>, step: InterviewStep) => {
+    event.preventDefault();
+    setDropTargetStepId(null);
+
+    if (!draggedCandidate || draggedCandidate.currentInterviewStep === step.name) {
+      setDraggedCandidate(null);
+      return;
+    }
+
+    try {
+      await moveCandidateToStep(draggedCandidate, step);
+    } finally {
+      setDraggedCandidate(null);
     }
   };
 
@@ -311,6 +327,28 @@ const PositionDetail: React.FC = () => {
                               <span>Puntuacion media</span>
                               <strong>{formatScore(candidate.averageScore)}</strong>
                             </div>
+                            <Form.Select
+                              aria-label={`Mover ${candidate.fullName} a otra fase`}
+                              className="candidate-card__move"
+                              disabled={saving}
+                              onChange={(event) => {
+                                const targetStep = interviewSteps.find((option) => option.id === Number(event.target.value));
+                                if (targetStep) {
+                                  moveCandidateToStep(candidate, targetStep);
+                                }
+                              }}
+                              size="sm"
+                              value=""
+                            >
+                              <option value="">Mover a...</option>
+                              {interviewSteps
+                                .filter((option) => option.name !== candidate.currentInterviewStep)
+                                .map((option) => (
+                                  <option key={option.id} value={option.id}>
+                                    {option.name}
+                                  </option>
+                                ))}
+                            </Form.Select>
                           </Card.Body>
                         </Card>
                       ))}

@@ -6,11 +6,8 @@ export const getPositions = async (_req: Request, res: Response) => {
         const positions = await getPositionsService();
         res.status(200).json(positions);
     } catch (error) {
-        if (error instanceof Error) {
-            res.status(500).json({ message: 'Error retrieving positions', error: error.message });
-        } else {
-            res.status(500).json({ message: 'Error retrieving positions', error: String(error) });
-        }
+        console.error('Error retrieving positions:', error);
+        res.status(500).json({ message: 'Error retrieving positions' });
     }
 };
 
